@@ -4,15 +4,14 @@ import * as THREE from 'three';
 import Icon from '@/components/ui/icon';
 
 interface PlayerProps {
-  position: THREE.Vector3;
-  rotation: THREE.Euler;
   flashlightOn: boolean;
   moveDirection: { x: number; y: number };
 }
 
-function Player({ position, rotation, flashlightOn, moveDirection }: PlayerProps) {
+function Player({ flashlightOn, moveDirection }: PlayerProps) {
   const { camera } = useThree();
   const spotLightRef = useRef<THREE.SpotLight>(null);
+  const positionRef = useRef(new THREE.Vector3(0, 1.6, 10));
 
   useFrame((state, delta) => {
     const moveSpeed = 3 * delta;
@@ -27,33 +26,29 @@ function Player({ position, rotation, flashlightOn, moveDirection }: PlayerProps
     right.y = 0;
     right.normalize();
 
-    position.addScaledVector(forward, moveDirection.y * moveSpeed);
-    position.addScaledVector(right, moveDirection.x * moveSpeed);
+    positionRef.current.addScaledVector(forward, moveDirection.y * moveSpeed);
+    positionRef.current.addScaledVector(right, moveDirection.x * moveSpeed);
 
-    camera.position.copy(position);
-    camera.rotation.copy(rotation);
+    camera.position.copy(positionRef.current);
 
     if (spotLightRef.current) {
       spotLightRef.current.position.copy(camera.position);
-      spotLightRef.current.target.position.copy(
-        camera.position.clone().add(forward.multiplyScalar(5))
-      );
+      const target = camera.position.clone().add(forward.multiplyScalar(5));
+      spotLightRef.current.target.position.copy(target);
       spotLightRef.current.target.updateMatrixWorld();
     }
   });
 
   return (
-    <>
-      <spotLight
-        ref={spotLightRef}
-        intensity={flashlightOn ? 50 : 0}
-        angle={0.4}
-        penumbra={0.5}
-        distance={15}
-        color="#FFD700"
-        castShadow
-      />
-    </>
+    <spotLight
+      ref={spotLightRef}
+      intensity={flashlightOn ? 50 : 0}
+      angle={0.4}
+      penumbra={0.5}
+      distance={15}
+      color="#FFD700"
+      castShadow
+    />
   );
 }
 
@@ -62,27 +57,27 @@ function Room() {
     <group>
       <mesh receiveShadow position={[0, -0.5, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <planeGeometry args={[30, 30]} />
-        <meshStandardMaterial color="#2a2a3e" />
+        <meshStandardMaterial color="#1a1a2e" />
       </mesh>
 
       <mesh receiveShadow position={[0, 0, -15]}>
         <boxGeometry args={[30, 10, 0.5]} />
-        <meshStandardMaterial color="#1a1a2e" />
+        <meshStandardMaterial color="#0f0f1e" />
       </mesh>
 
       <mesh receiveShadow position={[0, 0, 15]}>
         <boxGeometry args={[30, 10, 0.5]} />
-        <meshStandardMaterial color="#1a1a2e" />
+        <meshStandardMaterial color="#0f0f1e" />
       </mesh>
 
       <mesh receiveShadow position={[-15, 0, 0]} rotation={[0, Math.PI / 2, 0]}>
         <boxGeometry args={[30, 10, 0.5]} />
-        <meshStandardMaterial color="#1a1a2e" />
+        <meshStandardMaterial color="#0f0f1e" />
       </mesh>
 
       <mesh receiveShadow position={[15, 0, 0]} rotation={[0, Math.PI / 2, 0]}>
         <boxGeometry args={[30, 10, 0.5]} />
-        <meshStandardMaterial color="#1a1a2e" />
+        <meshStandardMaterial color="#0f0f1e" />
       </mesh>
 
       {[...Array(8)].map((_, i) => {
@@ -96,49 +91,34 @@ function Room() {
             position={[Math.cos(angle) * radius, 0.5, Math.sin(angle) * radius]}
           >
             <boxGeometry args={[1, 2, 1]} />
-            <meshStandardMaterial color="#3a3a4e" />
+            <meshStandardMaterial color="#2a2a3e" />
           </mesh>
         );
       })}
 
       <mesh castShadow receiveShadow position={[5, 1, -5]}>
         <boxGeometry args={[2, 2, 2]} />
-        <meshStandardMaterial color="#4a4a5e" />
+        <meshStandardMaterial color="#3a3a4e" />
       </mesh>
 
       <mesh castShadow receiveShadow position={[-6, 0.5, 6]}>
         <cylinderGeometry args={[0.5, 0.5, 3, 16]} />
-        <meshStandardMaterial color="#5a5a6e" />
+        <meshStandardMaterial color="#4a4a5e" />
       </mesh>
     </group>
   );
 }
 
-function Scene({ flashlightOn, moveDirection }: { flashlightOn: boolean; moveDirection: { x: number; y: number } }) {
-  const playerPosition = useRef(new THREE.Vector3(0, 1.6, 10));
-  const playerRotation = useRef(new THREE.Euler(0, 0, 0));
+function SceneSetup() {
   const { gl, scene } = useThree();
-
+  
   useEffect(() => {
-    gl.setClearColor('#000000');
+    gl.setClearColor(new THREE.Color('#000000'));
     scene.background = new THREE.Color('#0a0a0f');
+    scene.fog = new THREE.Fog('#000000', 3, 18);
   }, [gl, scene]);
-
-  return (
-    <>
-      <ambientLight intensity={0.05} />
-      <fog attach="fog" args={['#000000', 3, 18]} />
-      
-      <Player
-        position={playerPosition.current}
-        rotation={playerRotation.current}
-        flashlightOn={flashlightOn}
-        moveDirection={moveDirection}
-      />
-      
-      <Room />
-    </>
-  );
+  
+  return null;
 }
 
 function VirtualJoystick({ onMove }: { onMove: (x: number, y: number) => void }) {
@@ -210,7 +190,6 @@ function VirtualJoystick({ onMove }: { onMove: (x: number, y: number) => void })
 export default function HorrorGame() {
   const [flashlightOn, setFlashlightOn] = useState(true);
   const [moveDirection, setMoveDirection] = useState({ x: 0, y: 0 });
-  const [mouseMovement, setMouseMovement] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
     const handleOrientation = () => {
@@ -221,23 +200,17 @@ export default function HorrorGame() {
     handleOrientation();
   }, []);
 
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (e.touches.length === 1) {
-      const touch = e.touches[0];
-      const deltaX = touch.clientX - window.innerWidth / 2;
-      const deltaY = touch.clientY - window.innerHeight / 2;
-      setMouseMovement({ x: deltaX * 0.002, y: deltaY * 0.002 });
-    }
-  };
-
   return (
     <div className="w-full h-screen bg-black overflow-hidden relative">
       <Canvas
         shadows
-        camera={{ fov: 75, near: 0.1, far: 1000 }}
-        onTouchMove={handleTouchMove}
+        camera={{ fov: 75, near: 0.1, far: 1000, position: [0, 1.6, 10] }}
+        gl={{ antialias: true }}
       >
-        <Scene flashlightOn={flashlightOn} moveDirection={moveDirection} />
+        <SceneSetup />
+        <ambientLight intensity={0.05} />
+        <Player flashlightOn={flashlightOn} moveDirection={moveDirection} />
+        <Room />
       </Canvas>
 
       <VirtualJoystick onMove={(x, y) => setMoveDirection({ x, y })} />
