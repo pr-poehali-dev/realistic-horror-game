@@ -1,6 +1,5 @@
 import { useRef, useState, useEffect } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { PointerLockControls, Sky } from '@react-three/drei';
 import * as THREE from 'three';
 import Icon from '@/components/ui/icon';
 
@@ -118,12 +117,17 @@ function Room() {
 function Scene({ flashlightOn, moveDirection }: { flashlightOn: boolean; moveDirection: { x: number; y: number } }) {
   const playerPosition = useRef(new THREE.Vector3(0, 1.6, 10));
   const playerRotation = useRef(new THREE.Euler(0, 0, 0));
+  const { gl, scene } = useThree();
+
+  useEffect(() => {
+    gl.setClearColor('#000000');
+    scene.background = new THREE.Color('#0a0a0f');
+  }, [gl, scene]);
 
   return (
     <>
-      <Sky sunPosition={[0, 0.1, 0]} />
-      <ambientLight intensity={0.15} />
-      <fog attach="fog" args={['#0f0f1e', 5, 20]} />
+      <ambientLight intensity={0.05} />
+      <fog attach="fog" args={['#000000', 3, 18]} />
       
       <Player
         position={playerPosition.current}
